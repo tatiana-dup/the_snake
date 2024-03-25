@@ -7,6 +7,7 @@ pg.init()
 
 # Константы для размеров поля и сетки:
 SCREEN_WIDTH, SCREEN_HEIGHT = 640, 480
+SCREEN_CENTER = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
 GRID_SIZE = 20
 GRID_WIDTH = SCREEN_WIDTH // GRID_SIZE
 GRID_HEIGHT = SCREEN_HEIGHT // GRID_SIZE
@@ -23,11 +24,28 @@ BOARD_BACKGROUND_COLOR = (0, 0, 0)
 # Цвет границы ячейки:
 BORDER_COLOR = (93, 216, 228)
 
+# Базовый цвет объекта:
+OBJECT_COLOR_WHITE = (255, 255, 255)
+
 # Цвет яблока:
 APPLE_COLOR = (229, 43, 80)
 
 # Цвет змейки:
 SNAKE_COLOR = (71, 167, 106)
+
+# В словаре реализована логика, какое новое направление должен
+# принять игровой объект в зависимости от его текущего направления
+# и нажатой кнопокой.
+OBJECT_DIRECTION_LOGIC = {
+    (LEFT, pg.K_UP): UP,
+    (RIGHT, pg.K_UP): UP,
+    (UP, pg.K_LEFT): LEFT,
+    (DOWN, pg.K_LEFT): LEFT,
+    (LEFT, pg.K_DOWN): DOWN,
+    (RIGHT, pg.K_DOWN): DOWN,
+    (UP, pg.K_RIGHT): RIGHT,
+    (DOWN, pg.K_RIGHT): RIGHT
+}
 
 # Скорость движения змейки:
 SPEED = 20
@@ -45,8 +63,8 @@ clock = pg.time.Clock()
 class GameObject:
     """Базовый класс, от которого наследуются другие игровые объекты."""
 
-    def __init__(self, object_color=(255, 255, 255)):
-        self.position = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+    def __init__(self, object_color=OBJECT_COLOR_WHITE):
+        self.position = SCREEN_CENTER
         self.body_color = object_color
 
     def draw_cell(self, position, body_color=None, border_color=BORDER_COLOR):
@@ -70,8 +88,7 @@ class Apple(GameObject):
         self.randomize_position()
 
     def randomize_position(self,
-                           list_exception_pos=[(SCREEN_WIDTH // 2,
-                                                SCREEN_HEIGHT // 2)]
+                           list_exception_pos=[SCREEN_CENTER]
                            ):
         """Устанавливает случайное положение яблока на игровом поле.
 
@@ -97,12 +114,9 @@ class Snake(GameObject):
 
     def __init__(self, object_color=SNAKE_COLOR):
         super().__init__(object_color)
-        self.positions = [self.position]
-        self.length = None
-        self.direction = None
+        self.reset(RIGHT)
         self.next_direction = None
         self.last = None
-        self.reset(RIGHT)
 
     def draw(self):
         """Отрисовывает змейку на экране, затирая след."""
@@ -159,20 +173,6 @@ class Snake(GameObject):
 
 def handle_keys(game_object):
     """Обрабатывает действия пользователя"""
-    # В словаре реализована логика, какое новое направление должен
-    # принять игровой объект в зависимости от его текущего направления
-    # и нажатой кнопокой.
-    direction_logic = {
-        (LEFT, pg.K_UP): UP,
-        (RIGHT, pg.K_UP): UP,
-        (UP, pg.K_LEFT): LEFT,
-        (DOWN, pg.K_LEFT): LEFT,
-        (LEFT, pg.K_DOWN): DOWN,
-        (RIGHT, pg.K_DOWN): DOWN,
-        (UP, pg.K_RIGHT): RIGHT,
-        (DOWN, pg.K_RIGHT): RIGHT
-    }
-
     for event in pg.event.get():
         if event.type == pg.QUIT:
             pg.quit()
@@ -182,7 +182,7 @@ def handle_keys(game_object):
                 pg.quit()
                 raise SystemExit
             else:
-                game_object.next_direction = direction_logic.get(
+                game_object.next_direction = OBJECT_DIRECTION_LOGIC.get(
                     (game_object.direction, event.key),
                     game_object.direction)
 
