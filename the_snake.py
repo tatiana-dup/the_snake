@@ -6,11 +6,13 @@ import pygame as pg
 pg.init()
 
 # Константы для размеров поля и сетки:
-SCREEN_WIDTH, SCREEN_HEIGHT = 640, 480
-SCREEN_CENTER = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+SCREEN_WIDTH, SCREEN_HEIGHT = 640, 500
+PANEL_WIDTH, PANEL_HIGHT = SCREEN_WIDTH, 20
+PANEL_POSITION = (0, SCREEN_HEIGHT - PANEL_HIGHT)
+SCREEN_CENTER = (SCREEN_WIDTH // 2, (SCREEN_HEIGHT - PANEL_HIGHT) // 2)
 GRID_SIZE = 20
 GRID_WIDTH = SCREEN_WIDTH // GRID_SIZE
-GRID_HEIGHT = SCREEN_HEIGHT // GRID_SIZE
+GRID_HEIGHT = (SCREEN_HEIGHT - PANEL_HIGHT) // GRID_SIZE
 
 # Направления движения:
 UP = (0, -1)
@@ -20,6 +22,9 @@ RIGHT = (1, 0)
 
 # Цвет фона - черный:
 BOARD_BACKGROUND_COLOR = (0, 0, 0)
+
+# Цвет информационной панели:
+PANEL_COLOR = (95, 158, 160)
 
 # Цвет границы ячейки:
 BORDER_COLOR = (93, 216, 228)
@@ -32,6 +37,9 @@ APPLE_COLOR = (229, 43, 80)
 
 # Цвет змейки:
 SNAKE_COLOR = (71, 167, 106)
+
+# Шрифт для информационной панели:
+INFO_FONT = pg.font.Font(None, 16)
 
 # В словаре реализована логика, какое новое направление должен
 # принять игровой объект в зависимости от его текущего направления
@@ -48,7 +56,7 @@ OBJECT_DIRECTION_LOGIC = {
 }
 
 # Скорость движения змейки:
-SPEED = 20
+SPEED = 13
 
 # Настройка игрового окна:
 screen = pg.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
@@ -88,8 +96,7 @@ class Apple(GameObject):
         self.randomize_position()
 
     def randomize_position(self,
-                           list_exception_pos=[SCREEN_CENTER]
-                           ):
+                           list_exception_pos=[SCREEN_CENTER]):
         """Устанавливает случайное положение яблока на игровом поле.
 
         Аргументы:
@@ -150,7 +157,7 @@ class Snake(GameObject):
 
         # Задаем новые координаты для головы змейки.
         new_head_x_pos = (current_head_x_pos + dx) % SCREEN_WIDTH
-        new_head_y_pos = (current_head_y_pos + dy) % SCREEN_HEIGHT
+        new_head_y_pos = (current_head_y_pos + dy) % (SCREEN_HEIGHT - PANEL_HIGHT)
         new_head_position = (new_head_x_pos, new_head_y_pos)
         self.positions.insert(0, (new_head_position))
 
@@ -187,10 +194,37 @@ def handle_keys(game_object):
                     game_object.direction)
 
 
+class InfoPanel():
+    """Информационная панель на игровом поле"""
+
+    def __init__(self):
+        """Инициализация панели"""
+        self.position = PANEL_POSITION
+        self.color = PANEL_COLOR
+
+    def draw_panel(self):
+        """Отрисовывает информационную панель снизу экрана"""
+        rect = pg.Rect(self.position, (PANEL_WIDTH, PANEL_HIGHT))
+        pg.draw.rect(screen, self.color, rect)
+
+    def draw_score(self, score):
+        """Отображает счет"""
+        score_text = INFO_FONT.render(f"Length: {score}",
+                                      True,
+                                      OBJECT_COLOR_WHITE)
+        screen.blit(score_text, (self.position[0] + 5, self.position[1] + 5))
+
+    def update_panel(self, score):
+        """Обновляем информационную панель"""
+        self.draw_panel()
+        self.draw_score(score)
+
+
 def main():
     """Запускает основной цикл игры."""
     the_apple = Apple()
     my_snake = Snake()
+    info_panel = InfoPanel()
 
     while True:
         clock.tick(SPEED)
@@ -209,6 +243,7 @@ def main():
 
         my_snake.draw()
         the_apple.draw()
+        info_panel.update_panel(my_snake.length)
         pg.display.update()
 
 
