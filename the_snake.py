@@ -28,6 +28,9 @@ BOARD_BACKGROUND_COLOR = (0, 0, 0)
 # Цвет информационной панели:
 PANEL_COLOR = (95, 158, 160)
 
+# Цвет информационной панели:
+PANEL_COLOR = (95, 158, 160)
+
 # Цвет границы ячейки:
 BORDER_COLOR = (93, 216, 228)
 
@@ -39,6 +42,9 @@ APPLE_COLOR = (229, 43, 80)
 
 # Цвет змейки:
 SNAKE_COLOR = (71, 167, 106)
+
+# Шрифт для информационной панели:
+INFO_FONT = pg.font.Font(None, 16)
 
 # Шрифт для информационной панели:
 INFO_FONT = pg.font.Font(None, 16)
@@ -58,6 +64,7 @@ OBJECT_DIRECTION_LOGIC = {
 }
 
 # Скорость движения змейки:
+SPEED = 13
 SPEED = 13
 
 # Настройка игрового окна:
@@ -98,6 +105,7 @@ class Apple(GameObject):
         self.randomize_position()
 
     def randomize_position(self,
+                           list_exception_pos=[SCREEN_CENTER]):
                            list_exception_pos=[SCREEN_CENTER]):
         """Устанавливает случайное положение яблока на игровом поле.
 
@@ -222,10 +230,37 @@ class InfoPanel():
         self.draw_score(score)
 
 
+class InfoPanel():
+    """Информационная панель на игровом поле"""
+
+    def __init__(self):
+        """Инициализация панели"""
+        self.position = PANEL_POSITION
+        self.color = PANEL_COLOR
+
+    def draw_panel(self):
+        """Отрисовывает информационную панель снизу экрана"""
+        rect = pg.Rect(self.position, (PANEL_WIDTH, PANEL_HIGHT))
+        pg.draw.rect(screen, self.color, rect)
+
+    def draw_score(self, score):
+        """Отображает счет"""
+        score_text = INFO_FONT.render(f"Length: {score}",
+                                      True,
+                                      OBJECT_COLOR_WHITE)
+        screen.blit(score_text, (self.position[0] + 5, self.position[1] + 5))
+
+    def update_panel(self, score):
+        """Обновляем информационную панель"""
+        self.draw_panel()
+        self.draw_score(score)
+
+
 def main():
     """Запускает основной цикл игры."""
     the_apple = Apple()
     my_snake = Snake()
+    info_panel = InfoPanel()
     info_panel = InfoPanel()
 
     while True:
@@ -245,6 +280,7 @@ def main():
 
         my_snake.draw()
         the_apple.draw()
+        info_panel.update_panel(my_snake.length)
         info_panel.update_panel(my_snake.length)
         pg.display.update()
 
