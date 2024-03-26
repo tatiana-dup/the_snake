@@ -106,7 +106,6 @@ class Apple(GameObject):
 
     def randomize_position(self,
                            list_exception_pos=[SCREEN_CENTER]):
-                           list_exception_pos=[SCREEN_CENTER]):
         """Устанавливает случайное положение яблока на игровом поле.
 
         Аргументы:
@@ -202,32 +201,6 @@ def handle_keys(game_object):
                 game_object.next_direction = OBJECT_DIRECTION_LOGIC.get(
                     (game_object.direction, event.key),
                     game_object.direction)
-
-
-class InfoPanel():
-    """Информационная панель на игровом поле"""
-
-    def __init__(self):
-        """Инициализация панели"""
-        self.position = PANEL_POSITION
-        self.color = PANEL_COLOR
-
-    def draw_panel(self):
-        """Отрисовывает информационную панель снизу экрана"""
-        rect = pg.Rect(self.position, (PANEL_WIDTH, PANEL_HIGHT))
-        pg.draw.rect(screen, self.color, rect)
-
-    def draw_score(self, score):
-        """Отображает счет"""
-        score_text = INFO_FONT.render(f"Length: {score}",
-                                      True,
-                                      OBJECT_COLOR_WHITE)
-        screen.blit(score_text, (self.position[0] + 5, self.position[1] + 5))
-
-    def update_panel(self, score):
-        """Обновляем информационную панель"""
-        self.draw_panel()
-        self.draw_score(score)
 
 
 class InfoPanel():
