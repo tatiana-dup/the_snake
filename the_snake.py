@@ -133,14 +133,20 @@ class Garbage(GameObject):
     def __init__(self, list_exception_pos, object_color=GARBAGE_COLOR):
         super().__init__(object_color)
         self.randomize_position(list_exception_pos)
+        self.set_time_to_change_position()
+        self.last = None
 
-    def randomize_position(self, list_exception_pos):
+    def randomize_position(self, list_exception_pos, is_eaten=False):
         """Устанавливает случайное положение мусора на игровом поле.
 
         Аргументы:
         - list_exception_pos: список с координатами, которые нужно исключить
         из возможных координат появления.
         """
+        # Если мусор не был съеден, то сохраняем предыдущую координату
+        # для затирания
+        if not is_eaten:
+            self.last = self.position
         # Задаем случайные координаты, но так, чтобы
         # мусор не появилось под телом змейки или под яблоком.
         while True:
@@ -149,10 +155,26 @@ class Garbage(GameObject):
             self.position = (x_pos, y_pos)
             if self.position not in list_exception_pos:
                 break
+        # Устанавливаем время, спустя которое нужно сгенерировать
+        # новую позицию.
+        self.set_time_to_change_position()
+
+    def set_time_to_change_position(self):
+        """Задает случайное число для времени, через которое нужно
+        сгенерировать новую позицию.
+        """
+        self.time_to_change = randint(50, 200)
 
     def draw(self):
         """Отрисовывает мусор на игровой поверхности."""
         self.draw_cell(self.position)
+        # Уменьшаем время до генерации новой позиции.
+        self.time_to_change -= 1
+        # Если нужно, затираем предыдущую позицию.
+        if self.last is not None:
+            self.draw_cell(self.last, BOARD_BACKGROUND_COLOR,
+                           BOARD_BACKGROUND_COLOR)
+            self.last = None
 
 
 class Snake(GameObject):
@@ -166,14 +188,14 @@ class Snake(GameObject):
 
     def draw(self):
         """Отрисовывает змейку на экране, затирая след."""
-        # Затирание последнего сегмента
+        # Затирание последнего сегмента.
         if len(self.last) > 0:
             for cell in self.last:
                 self.draw_cell(cell, BOARD_BACKGROUND_COLOR,
                                BOARD_BACKGROUND_COLOR)
             self.last.clear()
 
-        # Отрисовка новой головы змейки
+        # Отрисовка новой головы змейки.
         self.draw_cell(self.get_head_position())
 
     def update_direction(self):
@@ -292,10 +314,10 @@ def main():
 
     def start_over():
         my_snake.reset()
-        the_apple.randomize_position(my_snake.positions)
+        the_apple.randomize_position(
+            my_snake.positions + [some_garbage.position])
         some_garbage.randomize_position(
-            my_snake.positions + [the_apple.position]
-        )
+            my_snake.positions + [the_apple.position])
         screen.fill(BOARD_BACKGROUND_COLOR)
 
     while True:
@@ -307,16 +329,20 @@ def main():
 
         if the_apple.position == my_snake.get_head_position():
             my_snake.length += 1
-            the_apple.randomize_position(my_snake.positions)
+            the_apple.randomize_position(
+                my_snake.positions + [some_garbage.position])
 
         if some_garbage.position == my_snake.get_head_position():
             if my_snake.length > 1:
                 my_snake.length -= 1
                 some_garbage.randomize_position(
-                    my_snake.positions + [the_apple.position]
-                )
+                    my_snake.positions + [the_apple.position], True)
             else:
                 start_over()
+
+        if some_garbage.time_to_change == 0:
+            some_garbage.randomize_position(
+                my_snake.positions + [the_apple.position])
 
         if my_snake.get_head_position() in my_snake.positions[2:]:
             start_over()
