@@ -40,6 +40,9 @@ OBJECT_COLOR_WHITE = (255, 255, 255)
 # Цвет яблока:
 APPLE_COLOR = (229, 43, 80)
 
+# Цвет несъедобного мусора:
+GARBAGE_COLOR = (189, 183, 107)
+
 # Цвет змейки:
 SNAKE_COLOR = (71, 167, 106)
 
@@ -64,7 +67,6 @@ OBJECT_DIRECTION_LOGIC = {
 }
 
 # Скорость движения змейки:
-SPEED = 13
 SPEED = 13
 
 # Настройка игрового окна:
@@ -125,6 +127,34 @@ class Apple(GameObject):
         self.draw_cell(self.position)
 
 
+class Garbage(GameObject):
+    """Дочерний класс, описывающий несъедобный мусор и действия с ним"""
+
+    def __init__(self, list_exception_pos, object_color=GARBAGE_COLOR):
+        super().__init__(object_color)
+        self.randomize_position(list_exception_pos)
+
+    def randomize_position(self, list_exception_pos):
+        """Устанавливает случайное положение мусора на игровом поле.
+
+        Аргументы:
+        - list_exception_pos: список с координатами, которые нужно исключить
+        из возможных координат появления.
+        """
+        # Задаем случайные координаты, но так, чтобы
+        # мусор не появилось под телом змейки или под яблоком.
+        while True:
+            x_pos = randint(0, GRID_WIDTH - 1) * GRID_SIZE
+            y_pos = randint(0, GRID_HEIGHT - 1) * GRID_SIZE
+            self.position = (x_pos, y_pos)
+            if self.position not in list_exception_pos:
+                break
+
+    def draw(self):
+        """Отрисовывает мусор на игровой поверхности."""
+        self.draw_cell(self.position)
+
+
 class Snake(GameObject):
     """Дочерний класс, описывающий змейку и ее поведение."""
 
@@ -132,14 +162,16 @@ class Snake(GameObject):
         super().__init__(object_color)
         self.reset(RIGHT)
         self.next_direction = None
-        self.last = None
+        self.last = []
 
     def draw(self):
         """Отрисовывает змейку на экране, затирая след."""
         # Затирание последнего сегмента
-        if self.last:
-            self.draw_cell(self.last, BOARD_BACKGROUND_COLOR,
-                           BOARD_BACKGROUND_COLOR)
+        if len(self.last) > 0:
+            for cell in self.last:
+                self.draw_cell(cell, BOARD_BACKGROUND_COLOR,
+                               BOARD_BACKGROUND_COLOR)
+            self.last.clear()
 
         # Отрисовка новой головы змейки
         self.draw_cell(self.get_head_position())
@@ -172,11 +204,20 @@ class Snake(GameObject):
 
         # Проверяем, съела ли змейка яблоко.
         if len(self.positions) > self.length:
-            self.last = self.positions.pop(-1)
+            count_extra_cell = len(self.positions) - self.length
+            for _ in range(count_extra_cell):
+                self.last.append(self.positions.pop(-1))
 
     def get_head_position(self):
         """Возвращает позицию головы змейки."""
         return self.positions[0]
+
+    def change_speed(self, selector):
+        """Изменяет скорость движения змейки."""
+        if selector == 1:
+            self.speed -= 1
+        else:
+            self.speed += 1
 
     def reset(self, direction=None):
         """Сбрасывает змейку в начальное состояние после
@@ -185,6 +226,7 @@ class Snake(GameObject):
         self.length = 1
         self.positions = [self.position]
         self.direction = direction or choice([RIGHT, UP, LEFT, DOWN])
+        self.speed = SPEED
 
 
 def handle_keys(game_object):
@@ -197,6 +239,10 @@ def handle_keys(game_object):
             if event.key == pg.K_ESCAPE:
                 pg.quit()
                 raise SystemExit
+            elif event.key == pg.K_1:
+                game_object.change_speed(1)
+            elif event.key == pg.K_2:
+                game_object.change_speed(2)
             else:
                 game_object.next_direction = OBJECT_DIRECTION_LOGIC.get(
                     (game_object.direction, event.key),
@@ -218,26 +264,42 @@ class InfoPanel():
 
     def draw_score(self, score):
         """Отображает счет"""
-        score_text = INFO_FONT.render(f"Length: {score}",
+        score_text = INFO_FONT.render(f'Length: {score}',
                                       True,
                                       OBJECT_COLOR_WHITE)
         screen.blit(score_text, (self.position[0] + 5, self.position[1] + 5))
 
-    def update_panel(self, score):
+    def draw_speed(self, speed):
+        """Отображает скорость змейки"""
+        speed_text = INFO_FONT.render(f'Speed: {speed}',
+                                      True,
+                                      OBJECT_COLOR_WHITE)
+        screen.blit(speed_text, (self.position[0] + 100, self.position[1] + 5))
+
+    def update_panel(self, score, speed):
         """Обновляем информационную панель"""
         self.draw_panel()
         self.draw_score(score)
+        self.draw_speed(speed)
 
 
 def main():
     """Запускает основной цикл игры."""
     the_apple = Apple()
     my_snake = Snake()
-    info_panel = InfoPanel()
+    some_garbage = Garbage(my_snake.positions + [the_apple.position])
     info_panel = InfoPanel()
 
+    def start_over():
+        my_snake.reset()
+        the_apple.randomize_position(my_snake.positions)
+        some_garbage.randomize_position(
+            my_snake.positions + [the_apple.position]
+        )
+        screen.fill(BOARD_BACKGROUND_COLOR)
+
     while True:
-        clock.tick(SPEED)
+        clock.tick(my_snake.speed)
 
         handle_keys(my_snake)
         my_snake.update_direction()
@@ -247,14 +309,22 @@ def main():
             my_snake.length += 1
             the_apple.randomize_position(my_snake.positions)
 
+        if some_garbage.position == my_snake.get_head_position():
+            if my_snake.length > 1:
+                my_snake.length -= 1
+                some_garbage.randomize_position(
+                    my_snake.positions + [the_apple.position]
+                )
+            else:
+                start_over()
+
         if my_snake.get_head_position() in my_snake.positions[2:]:
-            my_snake.reset()
-            screen.fill(BOARD_BACKGROUND_COLOR)
+            start_over()
 
         my_snake.draw()
         the_apple.draw()
-        info_panel.update_panel(my_snake.length)
-        info_panel.update_panel(my_snake.length)
+        some_garbage.draw()
+        info_panel.update_panel(my_snake.length, my_snake.speed)
         pg.display.update()
 
 
