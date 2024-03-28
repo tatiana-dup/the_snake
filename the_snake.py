@@ -46,6 +46,9 @@ GARBAGE_COLOR = (189, 183, 107)
 # Цвет змейки:
 SNAKE_COLOR = (71, 167, 106)
 
+# Цвет преград:
+BARRIER_COLOR = (128, 128, 128)
+
 # Шрифт для информационной панели:
 INFO_FONT = pg.font.Font(None, 16)
 
@@ -251,6 +254,63 @@ class Snake(GameObject):
         self.speed = SPEED
 
 
+class Barrier(GameObject):
+    """Дочерний класс, описывающий преграды."""
+
+    def __init__(self, object_color=BARRIER_COLOR):
+        super().__init__(object_color)
+        self.reset()
+
+    def create_new_barrier(self):
+        """Создает новую случайную фигуру преграды."""
+        list_of_figures = [
+            [(0, 0)],
+            [(0, 0), (1, 0)],
+            [(0, 0), (0, 1)],
+            [(0, 0), (1, 0), (2, 0)],
+            [(0, 0), (0, 1), (0, 2)],
+            [(0, 0), (1, 0), (0, 1)],
+            [(0, 0), (1, 0), (1, 1)],
+            [(0, 0), (0, 1), (1, 1)],
+            [(0, 1), (1, 0), (1, 1)],
+        ]
+        return choice(list_of_figures)
+
+    def randomize_position(self, list_exception_pos):
+        """Устанавливает случайное положение фигуры на поле."""
+        figure = self.create_new_barrier()
+        while True:
+            x_pos = randint(0, GRID_WIDTH - 1)
+            y_pos = randint(0, GRID_HEIGHT - 1)
+            new_figure_positions = [(
+                (x_pos + cell[0]) * GRID_SIZE,
+                (y_pos + cell[1]) * GRID_SIZE) for cell in figure]
+
+            common_positions = set(new_figure_positions).intersection(
+                list_exception_pos)
+
+            if len(common_positions) == 0:
+                self.positions.append(new_figure_positions)
+                self.set_time_to_new_barrier()
+                break
+
+    def draw(self):
+        """Отрисовывает преграды на поле."""
+        for figure in self.positions:
+            for cell in figure:
+                self.draw_cell(cell)
+        self.time_to_change -= 1
+
+    def set_time_to_new_barrier(self):
+        """Задает случайное время ло появления следующей фигуры."""
+        self.time_to_change = randint(300, 500)
+
+    def reset(self):
+        """Удаляет все преграды с поля и начинает их генерацию сначала."""
+        self.positions = []
+        self.set_time_to_new_barrier()
+
+
 def handle_keys(game_object):
     """Обрабатывает действия пользователя"""
     for event in pg.event.get():
@@ -310,15 +370,25 @@ def main():
     the_apple = Apple()
     my_snake = Snake()
     some_garbage = Garbage(my_snake.positions + [the_apple.position])
+    barriers = Barrier()
     info_panel = InfoPanel()
 
     def start_over():
         my_snake.reset()
+        barriers.reset()
         the_apple.randomize_position(
             my_snake.positions + [some_garbage.position])
         some_garbage.randomize_position(
             my_snake.positions + [the_apple.position])
         screen.fill(BOARD_BACKGROUND_COLOR)
+
+    def get_cells_ocupited():
+        by_barriers = []
+        for barrier in barriers.positions:
+            by_barriers += barrier
+        cells_ocupited = my_snake.positions + [the_apple.position] + [
+            some_garbage.position] + by_barriers
+        return cells_ocupited
 
     while True:
         clock.tick(my_snake.speed)
@@ -329,25 +399,30 @@ def main():
 
         if the_apple.position == my_snake.get_head_position():
             my_snake.length += 1
-            the_apple.randomize_position(
-                my_snake.positions + [some_garbage.position])
+            the_apple.randomize_position(get_cells_ocupited())
 
         if some_garbage.position == my_snake.get_head_position():
             if my_snake.length > 1:
                 my_snake.length -= 1
-                some_garbage.randomize_position(
-                    my_snake.positions + [the_apple.position], True)
+                some_garbage.randomize_position(get_cells_ocupited(), True)
             else:
                 start_over()
 
         if some_garbage.time_to_change == 0:
-            some_garbage.randomize_position(
-                my_snake.positions + [the_apple.position])
+            some_garbage.randomize_position(get_cells_ocupited())
+
+        if barriers.time_to_change == 0:
+            barriers.randomize_position(get_cells_ocupited())
 
         if my_snake.get_head_position() in my_snake.positions[2:]:
             start_over()
 
+        for barrier in barriers.positions:
+            if my_snake.get_head_position() in barrier:
+                start_over()
+
         my_snake.draw()
+        barriers.draw()
         the_apple.draw()
         some_garbage.draw()
         info_panel.update_panel(my_snake.length, my_snake.speed)
